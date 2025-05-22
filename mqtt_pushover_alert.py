@@ -14,7 +14,8 @@ def load_settings_from_db(db_path='settings.db'):
     )''')
     # Required keys
     required_keys = [
-        'MQTT_BROKER', 'MQTT_PORT', 'PUSHOVER_USER_KEY', 'PUSHOVER_API_TOKEN'
+        'MQTT_BROKER', 'MQTT_PORT', 'MQTT_USERNAME', 'MQTT_PASSWORD',
+        'PUSHOVER_USER_KEY', 'PUSHOVER_API_TOKEN'
     ]
     settings = {}
     for key in required_keys:
@@ -111,9 +112,13 @@ if __name__ == '__main__':
         exit(1)
     MQTT_BROKER = settings['MQTT_BROKER']
     MQTT_PORT = settings['MQTT_PORT']
+    MQTT_USERNAME = settings['MQTT_USERNAME']
+    MQTT_PASSWORD = settings['MQTT_PASSWORD']
     PUSHOVER_USER_KEY = settings['PUSHOVER_USER_KEY']
     PUSHOVER_API_TOKEN = settings['PUSHOVER_API_TOKEN']
     client = mqtt.Client()
+    if MQTT_USERNAME:
+        client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     client.on_connect = on_connect
     client.on_message = on_message
     client.connect(MQTT_BROKER, MQTT_PORT, 60)

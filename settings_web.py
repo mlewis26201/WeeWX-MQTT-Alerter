@@ -20,129 +20,192 @@ def handle_exception(e):
     traceback.print_exc()
     return f"Internal Server Error: {e}", 500
 
-SETTINGS_TEMPLATE = '''
+BOOTSTRAP_HEAD = '''
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body { background: #f8f9fa; }
+footer { margin-top:2em; text-align:center; color:#888; }
+.card { margin-bottom: 2em; }
+</style>
+'''
+
+SETTINGS_TEMPLATE = f'''
 <!doctype html>
-<title>WeeWX MQTT Alerter Settings</title>
-<h2>WeeWX MQTT Alerter Settings</h2>
+<html><head><title>WeeWX MQTT Alerter Settings</title>{BOOTSTRAP_HEAD}</head><body>
+<div class="container mt-4">
+<div class="card"><div class="card-body">
+<h2 class="mb-4">WeeWX MQTT Alerter Settings</h2>
 <form method="post">
-  <table>
-    {% for key in required_keys %}
+  <table class="table table-borderless w-auto">
+    {{% for key in required_keys %}}
     <tr>
-      <td><label for="{{key}}">{{key}}</label></td>
+      <td><label for="{{{{key}}}}">{{{{key}}}}</label></td>
       <td>
-        {% if key == 'MQTT_PASSWORD' %}
-          <input type="password" name="{{key}}" id="{{key}}" value="{{settings.get(key, '')}}">
-        {% elif key == 'MQTT_TOPIC' %}
-          <input type="text" name="{{key}}" id="{{key}}" value="{{settings.get(key, '')}}" placeholder="e.g. sensors/temperature">
-        {% else %}
-          <input type="text" name="{{key}}" id="{{key}}" value="{{settings.get(key, '')}}">
-        {% endif %}
+        {{% if key == 'MQTT_PASSWORD' %}}
+          <input type="password" class="form-control" name="{{{{key}}}}" id="{{{{key}}}}" value="{{{{settings.get(key, '')}}}}">
+        {{% elif key == 'MQTT_TOPIC' %}}
+          <input type="text" class="form-control" name="{{{{key}}}}" id="{{{{key}}}}" value="{{{{settings.get(key, '')}}}}" placeholder="e.g. sensors/temperature">
+        {{% else %}}
+          <input type="text" class="form-control" name="{{{{key}}}}" id="{{{{key}}}}" value="{{{{settings.get(key, '')}}}}">
+        {{% endif %}}
       </td>
     </tr>
-    {% endfor %}
+    {{% endfor %}}
   </table>
-  <input type="submit" value="Save">
+  <button type="submit" class="btn btn-primary">Save</button>
 </form>
-<a href="/alerts">Manage Alerts</a> | <a href="/alert_history">View Alert History</a>
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <ul>
-    {% for message in messages %}
-      <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
-<footer style="margin-top:2em;text-align:center;color:#888;">Built with Coco!</footer>
+<a href="/alerts" class="btn btn-secondary mt-3">Manage Alerts</a> | <a href="/alert_history" class="btn btn-outline-secondary mt-3">View Alert History</a>
+{{% with messages = get_flashed_messages() %}}
+  {{% if messages %}}
+    <div class="alert alert-info mt-3">
+    {{% for message in messages %}}
+      <div>{{{{ message }}}}</div>
+    {{% endfor %}}
+    </div>
+  {{% endif %}}
+{{% endwith %}}
+</div></div>
+<footer>Built with Coco!</footer>
+</div></body></html>
 '''
 
-ALERTS_TEMPLATE = '''
+ALERTS_TEMPLATE = f'''
 <!doctype html>
-<title>Alert Configurations</title>
-<h2>Alert Configurations</h2>
-<a href="/">Back to Settings</a> | <a href="/alert_history">View Alert History</a>
-<table border=1>
+<html><head><title>Alert Configurations</title>{BOOTSTRAP_HEAD}</head><body>
+<div class="container mt-4">
+<div class="card"><div class="card-body">
+<h2 class="mb-4">Alert Configurations</h2>
+<a href="/" class="btn btn-secondary mb-3">Back to Settings</a> | <a href="/alert_history" class="btn btn-outline-secondary mb-3">View Alert History</a>
+<table class="table table-striped table-bordered">
 <tr><th>ID</th><th>Topic</th><th>Threshold</th><th>Message</th><th>Max Alerts</th><th>Period (s)</th><th>Actions</th></tr>
-{% for alert in alerts %}
+{{% for alert in alerts %}}
 <tr>
-  <td>{{alert['id']}}</td>
-  <td>{{alert['topic']}}</td>
-  <td>{{alert['threshold']}}</td>
-  <td>{{alert['message']}}</td>
-  <td>{{alert['max_alerts']}}</td>
-  <td>{{alert['period_seconds']}}</td>
+  <td>{{{{alert['id']}}}}</td>
+  <td>{{{{alert['topic']}}}}</td>
+  <td>{{{{alert['threshold']}}}}</td>
+  <td>{{{{alert['message']}}}}</td>
+  <td>{{{{alert['max_alerts']}}}}</td>
+  <td>{{{{alert['period_seconds']}}}}</td>
   <td>
-    <a href="/alerts/edit/{{alert['id']}}">Edit</a>
-    <a href="/alerts/delete/{{alert['id']}}" onclick="return confirm('Delete this alert?');">Delete</a>
+    <a href="/alerts/edit/{{{{alert['id']}}}}" class="btn btn-sm btn-primary">Edit</a>
+    <a href="/alerts/delete/{{{{alert['id']}}}}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this alert?');">Delete</a>
   </td>
 </tr>
-{% endfor %}
+{{% endfor %}}
 </table>
-<h3>Add New Alert</h3>
-<form method="post" action="/alerts/add">
-  Topic: <select name="topic">
-    {% for t in topics %}
-      <option value="{{t}}">{{t}}</option>
-    {% endfor %}
-  </select> &nbsp;
-  <input type="text" name="topic" placeholder="Or enter new topic"> &nbsp;
-  Threshold: <input type="number" step="any" name="threshold" required> &nbsp;
-  Message: <input type="text" name="message" required> &nbsp;
-  Max Alerts: <input type="number" name="max_alerts" value="1" min="1" required> &nbsp;
-  Period (seconds): <input type="number" name="period_seconds" value="3600" min="1" required> &nbsp;
-  <input type="submit" value="Add Alert">
+<h3 class="mt-4">Add New Alert</h3>
+<form method="post" action="/alerts/add" class="row g-2 align-items-end">
+  <div class="col-auto">
+    <label>Topic:</label>
+    <select name="topic" class="form-select">
+      {{% for t in topics %}}
+        <option value="{{{{t}}}}">{{{{t}}}}</option>
+      {{% endfor %}}
+    </select>
+  </div>
+  <div class="col-auto">
+    <input type="text" class="form-control" name="topic" placeholder="Or enter new topic">
+  </div>
+  <div class="col-auto">
+    <label>Threshold:</label>
+    <input type="number" step="any" class="form-control" name="threshold" required>
+  </div>
+  <div class="col-auto">
+    <label>Message:</label>
+    <input type="text" class="form-control" name="message" required>
+  </div>
+  <div class="col-auto">
+    <label>Max Alerts:</label>
+    <input type="number" class="form-control" name="max_alerts" value="1" min="1" required>
+  </div>
+  <div class="col-auto">
+    <label>Period (seconds):</label>
+    <input type="number" class="form-control" name="period_seconds" value="3600" min="1" required>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-success">Add Alert</button>
+  </div>
 </form>
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <ul>
-    {% for message in messages %}
-      <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
-<footer style="margin-top:2em;text-align:center;color:#888;">Built with Coco!</footer>
+{{% with messages = get_flashed_messages() %}}
+  {{% if messages %}}
+    <div class="alert alert-info mt-3">
+    {{% for message in messages %}}
+      <div>{{{{ message }}}}</div>
+    {{% endfor %}}
+    </div>
+  {{% endif %}}
+{{% endwith %}}
+</div></div>
+<footer>Built with Coco!</footer>
+</div></body></html>
 '''
 
-EDIT_ALERT_TEMPLATE = '''
+EDIT_ALERT_TEMPLATE = f'''
 <!doctype html>
-<title>Edit Alert</title>
+<html><head><title>Edit Alert</title>{BOOTSTRAP_HEAD}</head><body>
+<div class="container mt-4">
+<div class="card"><div class="card-body">
 <h2>Edit Alert</h2>
-<a href="/alerts">Back to Alerts</a>
-<form method="post">
-  Topic: <select name="topic">
-    {% for t in topics %}
-      <option value="{{t}}" {% if alert['topic'] == t %}selected{% endif %}>{{t}}</option>
-    {% endfor %}
-  </select> &nbsp;
-  <input type="text" name="topic" value="{{alert['topic']}}" placeholder="Or enter new topic"> <br>
-  Threshold: <input type="number" step="any" name="threshold" value="{{alert['threshold']}}" required><br>
-  Message: <input type="text" name="message" value="{{alert['message']}}" required><br>
-  Max Alerts: <input type="number" name="max_alerts" value="{{alert['max_alerts']}}" min="1" required><br>
-  Period (seconds): <input type="number" name="period_seconds" value="{{alert['period_seconds']}}" min="1" required><br>
-  <input type="submit" value="Save">
+<a href="/alerts" class="btn btn-secondary mb-3">Back to Alerts</a>
+<form method="post" class="row g-2 align-items-end">
+  <div class="col-auto">
+    <label>Topic:</label>
+    <select name="topic" class="form-select">
+      {{% for t in topics %}}
+        <option value="{{{{t}}}}" {{% if alert['topic'] == t %}}selected{{% endif %}}>{{{{t}}}}</option>
+      {{% endfor %}}
+    </select>
+  </div>
+  <div class="col-auto">
+    <input type="text" class="form-control" name="topic" value="{{{{alert['topic']}}}}" placeholder="Or enter new topic">
+  </div>
+  <div class="col-auto">
+    <label>Threshold:</label>
+    <input type="number" step="any" class="form-control" name="threshold" value="{{{{alert['threshold']}}}}" required>
+  </div>
+  <div class="col-auto">
+    <label>Message:</label>
+    <input type="text" class="form-control" name="message" value="{{{{alert['message']}}}}" required>
+  </div>
+  <div class="col-auto">
+    <label>Max Alerts:</label>
+    <input type="number" class="form-control" name="max_alerts" value="{{{{alert['max_alerts']}}}}" min="1" required>
+  </div>
+  <div class="col-auto">
+    <label>Period (seconds):</label>
+    <input type="number" class="form-control" name="period_seconds" value="{{{{alert['period_seconds']}}}}" min="1" required>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
 </form>
-<footer style="margin-top:2em;text-align:center;color:#888;">Built with Coco!</footer>
+</div></div>
+<footer>Built with Coco!</footer>
+</div></body></html>
 '''
 
-ALERT_HISTORY_TEMPLATE = '''
+ALERT_HISTORY_TEMPLATE = f'''
 <!doctype html>
-<title>Alert History</title>
+<html><head><title>Alert History</title>{BOOTSTRAP_HEAD}</head><body>
+<div class="container mt-4">
+<div class="card"><div class="card-body">
 <h2>Alert History</h2>
-<a href="/">Back to Settings</a> | <a href="/alerts">Manage Alerts</a>
-<table border=1>
+<a href="/" class="btn btn-secondary mb-3">Back to Settings</a> | <a href="/alerts" class="btn btn-outline-secondary mb-3">Manage Alerts</a>
+<table class="table table-striped table-bordered">
 <tr><th>ID</th><th>Time</th><th>Topic</th><th>Threshold</th><th>Message</th></tr>
-{% for log in history %}
+{{% for log in history %}}
 <tr>
-  <td>{{log['id']}}</td>
-  <td>{{log['timestamp'] | datetimeformat}}</td>
-  <td>{{log['topic']}}</td>
-  <td>{{log['threshold']}}</td>
-  <td>{{log['message']}}</td>
+  <td>{{{{log['id']}}}}</td>
+  <td>{{{{log['timestamp'] | datetimeformat}}}}</td>
+  <td>{{{{log['topic']}}}}</td>
+  <td>{{{{log['threshold']}}}}</td>
+  <td>{{{{log['message']}}}}</td>
 </tr>
-{% endfor %}
+{{% endfor %}}
 </table>
-<footer style="margin-top:2em;text-align:center;color:#888;">Built with Coco!</footer>
+</div></div>
+<footer>Built with Coco!</footer>
+</div></body></html>
 '''
 
 def init_db():

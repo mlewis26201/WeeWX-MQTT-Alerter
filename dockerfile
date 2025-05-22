@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY mqtt_pushover_alert.py settings_web.py settings.db ./
+COPY mqtt_pushover_alert.py settings_web.py ./
 
 EXPOSE 8000
 

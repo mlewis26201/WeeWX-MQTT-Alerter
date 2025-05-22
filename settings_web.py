@@ -79,7 +79,12 @@ ALERTS_TEMPLATE = '''
 </table>
 <h3>Add New Alert</h3>
 <form method="post" action="/alerts/add">
-  Topic: <input type="text" name="topic" required> &nbsp;
+  Topic: <select name="topic">
+    {% for t in topics %}
+      <option value="{{t}}">{{t}}</option>
+    {% endfor %}
+  </select> &nbsp;
+  <input type="text" name="topic" placeholder="Or enter new topic"> &nbsp;
   Threshold: <input type="number" step="any" name="threshold" required> &nbsp;
   Message: <input type="text" name="message" required> &nbsp;
   Max Alerts: <input type="number" name="max_alerts" value="1" min="1" required> &nbsp;
@@ -104,7 +109,12 @@ EDIT_ALERT_TEMPLATE = '''
 <h2>Edit Alert</h2>
 <a href="/alerts">Back to Alerts</a>
 <form method="post">
-  Topic: <input type="text" name="topic" value="{{alert['topic']}}" required><br>
+  Topic: <select name="topic">
+    {% for t in topics %}
+      <option value="{{t}}" {% if alert['topic'] == t %}selected{% endif %}>{{t}}</option>
+    {% endfor %}
+  </select> &nbsp;
+  <input type="text" name="topic" value="{{alert['topic']}}" placeholder="Or enter new topic"> <br>
   Threshold: <input type="number" step="any" name="threshold" value="{{alert['threshold']}}" required><br>
   Message: <input type="text" name="message" value="{{alert['message']}}" required><br>
   Max Alerts: <input type="number" name="max_alerts" value="{{alert['max_alerts']}}" min="1" required><br>
@@ -134,6 +144,9 @@ def init_db():
         alert_id INTEGER NOT NULL,
         timestamp INTEGER NOT NULL,
         FOREIGN KEY(alert_id) REFERENCES alerts(id)
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS mqtt_topics (
+        topic TEXT PRIMARY KEY
     )''')
     conn.commit()
     conn.close()
@@ -196,6 +209,14 @@ def delete_alert(alert_id):
     conn.commit()
     conn.close()
 
+def get_seen_topics():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT topic FROM mqtt_topics ORDER BY topic')
+    topics = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return topics
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -211,7 +232,8 @@ def index():
 @app.route('/alerts')
 def alerts():
     alerts = get_alerts()
-    return render_template_string(ALERTS_TEMPLATE, alerts=alerts)
+    topics = get_seen_topics()
+    return render_template_string(ALERTS_TEMPLATE, alerts=alerts, topics=topics)
 
 @app.route('/alerts/add', methods=['POST'])
 def add_alert_route():
@@ -227,6 +249,7 @@ def add_alert_route():
 @app.route('/alerts/edit/<int:alert_id>', methods=['GET', 'POST'])
 def edit_alert(alert_id):
     alert = get_alert(alert_id)
+    topics = get_seen_topics()
     if not alert:
         flash('Alert not found!')
         return redirect(url_for('alerts'))
@@ -239,7 +262,7 @@ def edit_alert(alert_id):
         update_alert(alert_id, topic, threshold, message, max_alerts, period_seconds)
         flash('Alert updated!')
         return redirect(url_for('alerts'))
-    return render_template_string(EDIT_ALERT_TEMPLATE, alert=alert)
+    return render_template_string(EDIT_ALERT_TEMPLATE, alert=alert, topics=topics)
 
 @app.route('/alerts/delete/<int:alert_id>')
 def delete_alert_route(alert_id):

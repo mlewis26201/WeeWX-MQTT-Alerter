@@ -66,6 +66,16 @@ def log_alert(alert_id, db_path='settings.db'):
     conn.commit()
     conn.close()
 
+def log_seen_topic(topic, db_path='settings.db'):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS mqtt_topics (
+        topic TEXT PRIMARY KEY
+    )''')
+    cursor.execute('INSERT OR IGNORE INTO mqtt_topics (topic) VALUES (?)', (topic,))
+    conn.commit()
+    conn.close()
+
 # --- Pushover Notification Function ---
 def send_pushover_notification(message):
     url = 'https://api.pushover.net/1/messages.json'
@@ -88,6 +98,7 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     try:
+        log_seen_topic(msg.topic)
         payload = msg.payload.decode('utf-8')
         value = float(payload)
         print(f"Received value: {value} on topic: {msg.topic}")

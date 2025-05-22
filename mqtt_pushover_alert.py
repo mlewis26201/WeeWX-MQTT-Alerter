@@ -3,6 +3,7 @@ import requests
 import json
 import sqlite3
 import time
+import logging
 
 # --- Configuration ---
 def load_settings_from_db(db_path='settings.db'):
@@ -79,7 +80,7 @@ def send_pushover_notification(message):
 
 # --- MQTT Callback ---
 def on_connect(client, userdata, flags, rc):
-    print(f"Connected with result code {rc}")
+    logging.info(f"Connected to MQTT broker with result code {rc}")
     # Subscribe to all unique topics in alerts
     for alert in ALERTS:
         client.subscribe(alert['topic'])
@@ -102,6 +103,7 @@ def on_message(client, userdata, msg):
 
 # --- Main ---
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     try:
         settings = load_settings_from_db()
         ALERTS = load_alerts_from_db()

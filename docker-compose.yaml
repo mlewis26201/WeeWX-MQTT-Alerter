@@ -14,7 +14,7 @@ services:
     build: .
     image: weewx-mqtt-alerter:latest
     container_name: web_frontend
-    command: gunicorn -b 0.0.0.0:8000 settings_web:app
+    command: gunicorn -b 0.0.0.0:8000 settings_web:app --timeout 300 --log-level warning
     ports:
       - "8999:8000"
     volumes:

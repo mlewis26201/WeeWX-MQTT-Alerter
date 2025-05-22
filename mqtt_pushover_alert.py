@@ -101,10 +101,13 @@ def send_pushover_notification(message):
 # --- MQTT Callback ---
 def on_connect(client, userdata, flags, rc):
     logging.info(f"Connected to MQTT broker with result code {rc}")
-    # Subscribe to all unique topics in alerts
+    # Subscribe to all unique topics in alerts, including subtopics
     for alert in ALERTS:
-        logging.info(f"Subscribing to topic: {alert['topic']}")
-        client.subscribe(alert['topic'])
+        topic = alert['topic']
+        if not topic.endswith('#'):
+            topic = topic.rstrip('/') + '/#'  # Subscribe to all subtopics
+        logging.info(f"Subscribing to topic: {topic}")
+        client.subscribe(topic)
 
 
 def on_message(client, userdata, msg):

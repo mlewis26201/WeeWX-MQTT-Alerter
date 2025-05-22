@@ -294,6 +294,7 @@ def add_alert(topic, threshold, message, max_alerts=1, period_seconds=3600, dire
     cursor.execute('INSERT INTO alerts (topic, threshold, message, max_alerts, period_seconds, direction) VALUES (?, ?, ?, ?, ?, ?)', (topic, threshold, message, max_alerts, period_seconds, direction))
     conn.commit()
     conn.close()
+    logging.info(f"Alert created: topic={topic}, direction={direction}, value={threshold}, message={message}, max_alerts={max_alerts}, period_seconds={period_seconds}")
 
 def update_alert(alert_id, topic, threshold, message, max_alerts=1, period_seconds=3600, direction='above'):
     conn = sqlite3.connect(DB_PATH)
@@ -305,9 +306,15 @@ def update_alert(alert_id, topic, threshold, message, max_alerts=1, period_secon
 def delete_alert(alert_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    cursor.execute('SELECT topic, threshold, direction FROM alerts WHERE id=?', (alert_id,))
+    row = cursor.fetchone()
     cursor.execute('DELETE FROM alerts WHERE id=?', (alert_id,))
     conn.commit()
     conn.close()
+    if row:
+        logging.info(f"Alert deleted: topic={row[0]}, direction={row[2]}, value={row[1]}")
+    else:
+        logging.info(f"Alert deleted: id={alert_id} (not found in DB)")
 
 def get_seen_topics():
     conn = sqlite3.connect(DB_PATH)

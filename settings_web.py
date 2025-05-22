@@ -4,7 +4,7 @@ import logging
 
 DB_PATH = 'settings.db'
 REQUIRED_KEYS = [
-    'MQTT_BROKER', 'MQTT_PORT', 'MQTT_USERNAME', 'MQTT_PASSWORD',
+    'MQTT_BROKER', 'MQTT_PORT', 'MQTT_TOPIC', 'MQTT_USERNAME', 'MQTT_PASSWORD',
     'PUSHOVER_USER_KEY', 'PUSHOVER_API_TOKEN'
 ]
 
@@ -28,7 +28,15 @@ SETTINGS_TEMPLATE = '''
     {% for key in required_keys %}
     <tr>
       <td><label for="{{key}}">{{key}}</label></td>
-      <td><input type="text" name="{{key}}" id="{{key}}" value="{{settings.get(key, '')}}"></td>
+      <td>
+        {% if key == 'MQTT_PASSWORD' %}
+          <input type="password" name="{{key}}" id="{{key}}" value="{{settings.get(key, '')}}">
+        {% elif key == 'MQTT_TOPIC' %}
+          <input type="text" name="{{key}}" id="{{key}}" value="{{settings.get(key, '')}}" placeholder="e.g. sensors/temperature">
+        {% else %}
+          <input type="text" name="{{key}}" id="{{key}}" value="{{settings.get(key, '')}}">
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </table>

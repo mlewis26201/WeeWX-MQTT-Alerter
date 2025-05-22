@@ -1,6 +1,7 @@
 from flask import Flask, render_template_string, request, redirect, url_for, flash
 import sqlite3
 import logging
+from datetime import datetime
 
 DB_PATH = 'settings.db'
 REQUIRED_KEYS = [
@@ -42,7 +43,7 @@ SETTINGS_TEMPLATE = '''
   </table>
   <input type="submit" value="Save">
 </form>
-<a href="/alerts">Manage Alerts</a>
+<a href="/alerts">Manage Alerts</a> | <a href="/alert_history">View Alert History</a>
 {% with messages = get_flashed_messages() %}
   {% if messages %}
     <ul>
@@ -59,7 +60,7 @@ ALERTS_TEMPLATE = '''
 <!doctype html>
 <title>Alert Configurations</title>
 <h2>Alert Configurations</h2>
-<a href="/">Back to Settings</a>
+<a href="/">Back to Settings</a> | <a href="/alert_history">View Alert History</a>
 <table border=1>
 <tr><th>ID</th><th>Topic</th><th>Threshold</th><th>Message</th><th>Max Alerts</th><th>Period (s)</th><th>Actions</th></tr>
 {% for alert in alerts %}
@@ -121,6 +122,26 @@ EDIT_ALERT_TEMPLATE = '''
   Period (seconds): <input type="number" name="period_seconds" value="{{alert['period_seconds']}}" min="1" required><br>
   <input type="submit" value="Save">
 </form>
+<footer style="margin-top:2em;text-align:center;color:#888;">Built with Coco!</footer>
+'''
+
+ALERT_HISTORY_TEMPLATE = '''
+<!doctype html>
+<title>Alert History</title>
+<h2>Alert History</h2>
+<a href="/">Back to Settings</a> | <a href="/alerts">Manage Alerts</a>
+<table border=1>
+<tr><th>ID</th><th>Time</th><th>Topic</th><th>Threshold</th><th>Message</th></tr>
+{% for log in history %}
+<tr>
+  <td>{{log['id']}}</td>
+  <td>{{log['timestamp'] | datetimeformat}}</td>
+  <td>{{log['topic']}}</td>
+  <td>{{log['threshold']}}</td>
+  <td>{{log['message']}}</td>
+</tr>
+{% endfor %}
+</table>
 <footer style="margin-top:2em;text-align:center;color:#888;">Built with Coco!</footer>
 '''
 
@@ -217,15 +238,29 @@ def get_seen_topics():
     conn.close()
     return topics
 
-@app.route('/', methods=['GET', 'POST'])
+def get_alert_history(limit=100):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT alert_logs.id, alert_logs.timestamp, alerts.topic, alerts.threshold, alerts.message
+        FROM alert_logs
+        JOIN alerts ON alert_logs.alert_id = alerts.id
+        ORDER BY alert_logs.timestamp DESC
+        LIMIT ?
+    ''', (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [
+        dict(id=row[0], timestamp=row[1], topic=row[2], threshold=row[3], message=row[4])
+        for row in rows
+    ]
+
+@app.template_filter('datetimeformat')
+def datetimeformat_filter(value):
+    return datetime.fromtimestamp(value).strftime('%Y-%m-%d %H:%M:%S')
+
+@app.route('/')
 def index():
-    if request.method == 'POST':
-        for key in REQUIRED_KEYS:
-            value = request.form.get(key, '')
-            set_setting(key, value)
-        logging.info("Settings updated via web form.")
-        flash('Settings updated!')
-        return redirect(url_for('index'))
     settings = get_settings()
     return render_template_string(SETTINGS_TEMPLATE, settings=settings, required_keys=REQUIRED_KEYS)
 
@@ -269,6 +304,11 @@ def delete_alert_route(alert_id):
     delete_alert(alert_id)
     flash('Alert deleted!')
     return redirect(url_for('alerts'))
+
+@app.route('/alert_history')
+def alert_history():
+    history = get_alert_history()
+    return render_template_string(ALERT_HISTORY_TEMPLATE, history=history)
 
 if __name__ == '__main__':
     app.run(debug=True)

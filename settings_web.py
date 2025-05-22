@@ -29,9 +29,11 @@ footer { margin-top:2em; text-align:center; color:#888; }
 </style>
 '''
 
+FOOTER_HTML = '<footer>WeeWX Weather Alerter. Released under GPL-3.0. <a href="https://github.com/mlewis26201/WeeWX-MQTT-Alerter" target="_blank">GitHub</a></footer>'
+
 SETTINGS_TEMPLATE = f'''
 <!doctype html>
-<html><head><title>WeeWX MQTT Alerter Settings</title>{BOOTSTRAP_HEAD}</head><body>
+<html><head><title>WeeWX MQTT Alerter Settings</title>{{BOOTSTRAP_HEAD}}</head><body>
 <div class="container mt-4">
 <div class="card"><div class="card-body">
 <h2 class="mb-4">WeeWX MQTT Alerter Settings</h2>
@@ -65,7 +67,7 @@ SETTINGS_TEMPLATE = f'''
   {{% endif %}}
 {{% endwith %}}
 </div></div>
-<footer>Built with Coco!</footer>
+{FOOTER_HTML}
 </div></body></html>
 '''
 
@@ -141,7 +143,7 @@ ALERTS_TEMPLATE = '''
   {% endif %}
 {% endwith %}
 </div></div>
-<footer>Built with Coco!</footer>
+{FOOTER_HTML}
 </div></body></html>
 '''
 
@@ -189,13 +191,13 @@ EDIT_ALERT_TEMPLATE = '''
   </div>
 </form>
 </div></div>
-<footer>Built with Coco!</footer>
+{FOOTER_HTML}
 </div></body></html>
 '''
 
 ALERT_HISTORY_TEMPLATE = f'''
 <!doctype html>
-<html><head><title>Alert History</title>{BOOTSTRAP_HEAD}</head><body>
+<html><head><title>Alert History</title>{{BOOTSTRAP_HEAD}}</head><body>
 <div class="container mt-4">
 <div class="card"><div class="card-body">
 <h2>Alert History</h2>
@@ -214,7 +216,7 @@ ALERT_HISTORY_TEMPLATE = f'''
 {{% endfor %}}
 </table>
 </div></div>
-<footer>Built with Coco!</footer>
+{FOOTER_HTML}
 </div></body></html>
 '''
 

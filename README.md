@@ -1,5 +1,15 @@
 # WeeWX MQTT Alerter
 
+## Background and Intent
+As a longtime user of WeeWX, I always wished it had a way to alert me if the temperature was above or below a certain value or there was a high gust of wind. As an exercise in learning to use AI to augment my development abilities and create something that would be useful to me and the community.
+
+This application relies on having WeeWX setup to send MQTT messages. I use https://github.com/matthewwall/weewx-mqtt and it seems to work well. If there is enough demand, I could include an MQTT broker in the application.
+
+It also relies on Pushover for notifications becuase I alredy use it. If there is enough demand I would be willing to add other options like Pushbullet. I will not be adding SMTP or Email. It is simply too difficult anymore to work with for homelab type projects.
+
+Yes, I realize that all of this could probably be done by directly watching the WeeWX database, but I was already using MQTT and wanted to work with that.
+
+## Description
 A Dockerized system for monitoring MQTT messages from WeeWX weather software and sending Pushover notifications when configurable thresholds are exceeded. Includes a Flask web frontend for managing settings and alerts, with alert history and logging.
 
 ## Features

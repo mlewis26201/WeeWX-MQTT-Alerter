@@ -43,7 +43,7 @@ def load_alerts_from_db(db_path='settings.db'):
     )''')
     # Add alert for MQTT_TOPIC in settings if not already present
     settings = load_settings_from_db(db_path)
-    mqtt_topic = settings.get('MQTT_TOPIC')
+    mqtt_topic = settings.get('MQTT_TOPIC') or 'weather'
     if mqtt_topic:
         cursor.execute('SELECT COUNT(*) FROM alerts WHERE topic=?', (mqtt_topic,))
         if cursor.fetchone()[0] == 0:

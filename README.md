@@ -73,5 +73,9 @@ docker-compose up --build
 - Ensure MQTT and Pushover credentials are correct
 - Ensure MQTT messages are being published to the correct topic
 
+## Roadmap
+- Add SSL Support to MQTT
+- Add export functionality for backing up alerts or similar.
+
 ## License
 GNU GPL v3

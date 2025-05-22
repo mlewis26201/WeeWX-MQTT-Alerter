@@ -71,39 +71,39 @@ SETTINGS_TEMPLATE = f'''
 </div></body></html>
 '''
 
-ALERTS_TEMPLATE = '''
+ALERTS_TEMPLATE = f'''
 <!doctype html>
-<html><head><title>Alert Configurations</title>''' + BOOTSTRAP_HEAD + '''</head><body>
+<html><head><title>Alert Configurations</title>{BOOTSTRAP_HEAD}</head><body>
 <div class="container mt-4">
 <div class="card"><div class="card-body">
 <h2 class="mb-4">Alert Configurations</h2>
 <a href="/" class="btn btn-secondary mb-3">Back to Settings</a> | <a href="/alert_history" class="btn btn-outline-secondary mb-3">View Alert History</a>
 <table class="table table-striped table-bordered">
 <tr><th>ID</th><th>Topic</th><th>IS</th><th>Value</th><th>Message</th><th>Max Alerts</th><th>Period (s)</th><th>Actions</th></tr>
-{% for alert in alerts %}
+{{% for alert in alerts %}}
 <tr>
-  <td>{{alert['id']}}</td>
-  <td>{{alert['topic']}}</td>
-  <td>{{alert['direction']}}</td>
-  <td>{{alert['threshold']}}</td>
-  <td>{{alert['message']}}</td>
-  <td>{{alert['max_alerts']}}</td>
-  <td>{{alert['period_seconds']}}</td>
+  <td>{{{{alert['id']}}}}</td>
+  <td>{{{{alert['topic']}}}}</td>
+  <td>{{{{alert['direction']}}}}</td>
+  <td>{{{{alert['threshold']}}}}</td>
+  <td>{{{{alert['message']}}}}</td>
+  <td>{{{{alert['max_alerts']}}}}</td>
+  <td>{{{{alert['period_seconds']}}}}</td>
   <td>
-    <a href="/alerts/edit/{{alert['id']}}" class="btn btn-sm btn-primary">Edit</a>
-    <a href="/alerts/delete/{{alert['id']}}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this alert?');">Delete</a>
+    <a href="/alerts/edit/{{{{alert['id']}}}}" class="btn btn-sm btn-primary">Edit</a>
+    <a href="/alerts/delete/{{{{alert['id']}}}}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this alert?');">Delete</a>
   </td>
 </tr>
-{% endfor %}
+{{% endfor %}}
 </table>
 <h3 class="mt-4">Add New Alert</h3>
 <form method="post" action="/alerts/add" class="row g-2 align-items-end">
   <div class="col-auto">
     <label>Topic:</label>
     <select name="topic" class="form-select">
-      {% for t in topics %}
-        <option value="{{t}}">{{t}}</option>
-      {% endfor %}
+      {{% for t in topics %}}
+        <option value="{{{{t}}}}">{{{{t}}}}</option>
+      {{% endfor %}}
     </select>
   </div>
   <div class="col-auto">
@@ -133,15 +133,15 @@ ALERTS_TEMPLATE = '''
     <button type="submit" class="btn btn-success">Add Alert</button>
   </div>
 </form>
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
+{{% with messages = get_flashed_messages() %}}
+  {{% if messages %}}
     <div class="alert alert-info mt-3">
-    {% for message in messages %}
-      <div>{{ message }}</div>
-    {% endfor %}
+    {{% for message in messages %}}
+      <div>{{{{ message }}}}</div>
+    {{% endfor %}}
     </div>
-  {% endif %}
-{% endwith %}
+  {{% endif %}}
+{{% endwith %}}
 </div></div>
 {FOOTER_HTML}
 </div></body></html>

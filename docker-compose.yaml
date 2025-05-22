@@ -7,7 +7,7 @@ services:
     container_name: mqtt_alerter
     command: python mqtt_pushover_alert.py
     volumes:
-      - settings_data:/app/settings.db
+      - settings_data:/app
     restart: unless-stopped
 
   web_frontend:
@@ -18,9 +18,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - settings_data:/app/settings.db
+      - settings_data:/app
     restart: unless-stopped
 
 volumes:
   settings_data:
-    # This will create a named volume for persistent storage of settings.db

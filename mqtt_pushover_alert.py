@@ -111,7 +111,10 @@ def log_seen_topic(topic, db_path='settings.db'):
     conn.close()
 
 # --- Pushover Notification Function ---
-def send_pushover_notification(message):
+def send_pushover_notification(message, topic=None, value=None):
+    # Always include topic and value in the notification
+    if topic is not None and value is not None:
+        message = f"[{topic}] {message} (Value: {value})"
     url = 'https://api.pushover.net/1/messages.json'
     data = {
         'token': PUSHOVER_API_TOKEN,
@@ -156,7 +159,9 @@ def on_message(client, userdata, msg):
                 if triggered:
                     logging.info(f"Alert triggered for topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     if can_send_alert(alert['id'], alert['max_alerts'], alert['period_seconds']):
-                        send_pushover_notification(alert['message'].replace('{value}', str(value)).replace('{threshold}', str(threshold)))
+                        # Always include topic and value in the notification
+                        message = alert['message'].replace('{value}', str(value)).replace('{threshold}', str(threshold))
+                        send_pushover_notification(message, topic=msg.topic, value=value)
                         log_alert(alert['id'])
                         logging.info(f"Pushover notification sent for alert {alert['id']} on topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     else:

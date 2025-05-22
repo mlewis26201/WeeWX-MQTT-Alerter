@@ -33,7 +33,7 @@ FOOTER_HTML = '<footer>WeeWX Weather Alerter. Released under GPL-3.0. <a href="h
 
 SETTINGS_TEMPLATE = f'''
 <!doctype html>
-<html><head><title>WeeWX MQTT Alerter Settings</title>{{BOOTSTRAP_HEAD}}</head><body>
+<html><head><title>WeeWX MQTT Alerter Settings</title>{BOOTSTRAP_HEAD}</head><body>
 <div class="container mt-4">
 <div class="card"><div class="card-body">
 <h2 class="mb-4">WeeWX MQTT Alerter Settings</h2>
@@ -197,7 +197,7 @@ EDIT_ALERT_TEMPLATE = '''
 
 ALERT_HISTORY_TEMPLATE = f'''
 <!doctype html>
-<html><head><title>Alert History</title>{{BOOTSTRAP_HEAD}}</head><body>
+<html><head><title>Alert History</title>{BOOTSTRAP_HEAD}</head><body>
 <div class="container mt-4">
 <div class="card"><div class="card-body">
 <h2>Alert History</h2>

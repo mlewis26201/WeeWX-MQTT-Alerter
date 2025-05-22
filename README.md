@@ -26,7 +26,7 @@ A Dockerized system for monitoring MQTT messages from WeeWX weather software and
 
 ### 1. Clone the repository
 ```
-git clone <your-repo-url>
+git clone https://github.com/mlewis26201/WeeWX-MQTT-Alerter.git
 cd WeeWX-MQTT-Alerter
 ```
 

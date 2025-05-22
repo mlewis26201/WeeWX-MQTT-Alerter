@@ -77,7 +77,7 @@ ALERTS_TEMPLATE = f'''
 <h2 class="mb-4">Alert Configurations</h2>
 <a href="/" class="btn btn-secondary mb-3">Back to Settings</a> | <a href="/alert_history" class="btn btn-outline-secondary mb-3">View Alert History</a>
 <table class="table table-striped table-bordered">
-<tr><th>ID</th><th>Topic</th><th>Threshold</th><th>Message</th><th>Max Alerts</th><th>Period (s)</th><th>Actions</th></tr>
+<tr><th>ID</th><th>Topic</th><th>Threshold</th><th>Message</th><th>Max Alerts</th><th>Period (s)</th><th>Direction</th><th>Actions</th></tr>
 {{% for alert in alerts %}}
 <tr>
   <td>{{{{alert['id']}}}}</td>
@@ -86,6 +86,7 @@ ALERTS_TEMPLATE = f'''
   <td>{{{{alert['message']}}}}</td>
   <td>{{{{alert['max_alerts']}}}}</td>
   <td>{{{{alert['period_seconds']}}}}</td>
+  <td>{{{{alert['direction']}}}}</td>
   <td>
     <a href="/alerts/edit/{{{{alert['id']}}}}" class="btn btn-sm btn-primary">Edit</a>
     <a href="/alerts/delete/{{{{alert['id']}}}}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this alert?');">Delete</a>
@@ -121,6 +122,13 @@ ALERTS_TEMPLATE = f'''
   <div class="col-auto">
     <label>Period (seconds):</label>
     <input type="number" class="form-control" name="period_seconds" value="3600" min="1" required>
+  </div>
+  <div class="col-auto">
+    <label>Direction:</label>
+    <select name="direction" class="form-select">
+      <option value="above">Above</option>
+      <option value="below">Below</option>
+    </select>
   </div>
   <div class="col-auto">
     <button type="submit" class="btn btn-success">Add Alert</button>
@@ -176,6 +184,13 @@ EDIT_ALERT_TEMPLATE = f'''
     <input type="number" class="form-control" name="period_seconds" value="{{{{alert['period_seconds']}}}}" min="1" required>
   </div>
   <div class="col-auto">
+    <label>Direction:</label>
+    <select name="direction" class="form-select">
+      <option value="above" {% if alert['direction'] == 'above' %}selected{% endif %}>Above</option>
+      <option value="below" {% if alert['direction'] == 'below' %}selected{% endif %}>Below</option>
+    </select>
+  </div>
+  <div class="col-auto">
     <button type="submit" class="btn btn-primary">Save</button>
   </div>
 </form>
@@ -192,7 +207,7 @@ ALERT_HISTORY_TEMPLATE = f'''
 <h2>Alert History</h2>
 <a href="/" class="btn btn-secondary mb-3">Back to Settings</a> | <a href="/alerts" class="btn btn-outline-secondary mb-3">Manage Alerts</a>
 <table class="table table-striped table-bordered">
-<tr><th>ID</th><th>Time</th><th>Topic</th><th>Threshold</th><th>Message</th></tr>
+<tr><th>ID</th><th>Time</th><th>Topic</th><th>Threshold</th><th>Message</th><th>Direction</th></tr>
 {{% for log in history %}}
 <tr>
   <td>{{{{log['id']}}}}</td>
@@ -200,6 +215,7 @@ ALERT_HISTORY_TEMPLATE = f'''
   <td>{{{{log['topic']}}}}</td>
   <td>{{{{log['threshold']}}}}</td>
   <td>{{{{log['message']}}}}</td>
+  <td>{{{{log['direction']}}}}</td>
 </tr>
 {{% endfor %}}
 </table>
@@ -221,8 +237,14 @@ def init_db():
         threshold REAL NOT NULL,
         message TEXT NOT NULL,
         max_alerts INTEGER NOT NULL DEFAULT 1,
-        period_seconds INTEGER NOT NULL DEFAULT 3600
+        period_seconds INTEGER NOT NULL DEFAULT 3600,
+        direction TEXT NOT NULL DEFAULT 'above'
     )''')
+    # Add direction column if missing (for upgrades)
+    try:
+        cursor.execute("ALTER TABLE alerts ADD COLUMN direction TEXT NOT NULL DEFAULT 'above'")
+    except sqlite3.OperationalError:
+        pass  # Already exists
     cursor.execute('''CREATE TABLE IF NOT EXISTS alert_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         alert_id INTEGER NOT NULL,
@@ -257,32 +279,32 @@ def set_setting(key, value):
 def get_alerts():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT id, topic, threshold, message, max_alerts, period_seconds FROM alerts')
-    alerts = [dict(id=row[0], topic=row[1], threshold=row[2], message=row[3], max_alerts=row[4], period_seconds=row[5]) for row in cursor.fetchall()]
+    cursor.execute('SELECT id, topic, threshold, message, max_alerts, period_seconds, direction FROM alerts')
+    alerts = [dict(id=row[0], topic=row[1], threshold=row[2], message=row[3], max_alerts=row[4], period_seconds=row[5], direction=row[6]) for row in cursor.fetchall()]
     conn.close()
     return alerts
 
 def get_alert(alert_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT id, topic, threshold, message, max_alerts, period_seconds FROM alerts WHERE id=?', (alert_id,))
+    cursor.execute('SELECT id, topic, threshold, message, max_alerts, period_seconds, direction FROM alerts WHERE id=?', (alert_id,))
     row = cursor.fetchone()
     conn.close()
     if row:
-        return dict(id=row[0], topic=row[1], threshold=row[2], message=row[3], max_alerts=row[4], period_seconds=row[5])
+        return dict(id=row[0], topic=row[1], threshold=row[2], message=row[3], max_alerts=row[4], period_seconds=row[5], direction=row[6])
     return None
 
-def add_alert(topic, threshold, message, max_alerts=1, period_seconds=3600):
+def add_alert(topic, threshold, message, max_alerts=1, period_seconds=3600, direction='above'):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO alerts (topic, threshold, message, max_alerts, period_seconds) VALUES (?, ?, ?, ?, ?)', (topic, threshold, message, max_alerts, period_seconds))
+    cursor.execute('INSERT INTO alerts (topic, threshold, message, max_alerts, period_seconds, direction) VALUES (?, ?, ?, ?, ?, ?)', (topic, threshold, message, max_alerts, period_seconds, direction))
     conn.commit()
     conn.close()
 
-def update_alert(alert_id, topic, threshold, message, max_alerts=1, period_seconds=3600):
+def update_alert(alert_id, topic, threshold, message, max_alerts=1, period_seconds=3600, direction='above'):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('UPDATE alerts SET topic=?, threshold=?, message=?, max_alerts=?, period_seconds=? WHERE id=?', (topic, threshold, message, max_alerts, period_seconds, alert_id))
+    cursor.execute('UPDATE alerts SET topic=?, threshold=?, message=?, max_alerts=?, period_seconds=?, direction=? WHERE id=?', (topic, threshold, message, max_alerts, period_seconds, direction, alert_id))
     conn.commit()
     conn.close()
 
@@ -305,7 +327,7 @@ def get_alert_history(limit=100):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT alert_logs.id, alert_logs.timestamp, alerts.topic, alerts.threshold, alerts.message
+        SELECT alert_logs.id, alert_logs.timestamp, alerts.topic, alerts.threshold, alerts.message, alerts.direction
         FROM alert_logs
         JOIN alerts ON alert_logs.alert_id = alerts.id
         ORDER BY alert_logs.timestamp DESC
@@ -314,7 +336,7 @@ def get_alert_history(limit=100):
     rows = cursor.fetchall()
     conn.close()
     return [
-        dict(id=row[0], timestamp=row[1], topic=row[2], threshold=row[3], message=row[4])
+        dict(id=row[0], timestamp=row[1], topic=row[2], threshold=row[3], message=row[4], direction=row[5])
         for row in rows
     ]
 
@@ -347,7 +369,8 @@ def add_alert_route():
     message = request.form['message']
     max_alerts = request.form['max_alerts']
     period_seconds = request.form['period_seconds']
-    add_alert(topic, threshold, message, max_alerts, period_seconds)
+    direction = request.form.get('direction', 'above')
+    add_alert(topic, threshold, message, max_alerts, period_seconds, direction)
     flash('Alert added!')
     return redirect(url_for('alerts'))
 
@@ -364,7 +387,8 @@ def edit_alert(alert_id):
         message = request.form['message']
         max_alerts = request.form['max_alerts']
         period_seconds = request.form['period_seconds']
-        update_alert(alert_id, topic, threshold, message, max_alerts, period_seconds)
+        direction = request.form.get('direction', 'above')
+        update_alert(alert_id, topic, threshold, message, max_alerts, period_seconds, direction)
         flash('Alert updated!')
         return redirect(url_for('alerts'))
     return render_template_string(EDIT_ALERT_TEMPLATE, alert=alert, topics=topics)

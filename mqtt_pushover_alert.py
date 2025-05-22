@@ -93,6 +93,7 @@ def on_connect(client, userdata, flags, rc):
     logging.info(f"Connected to MQTT broker with result code {rc}")
     # Subscribe to all unique topics in alerts
     for alert in ALERTS:
+        logging.info(f"Subscribing to topic: {alert['topic']}")
         client.subscribe(alert['topic'])
 
 

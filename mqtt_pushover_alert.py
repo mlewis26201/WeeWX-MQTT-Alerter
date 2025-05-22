@@ -2,6 +2,7 @@ import paho.mqtt.client as mqtt
 import requests
 import json
 import sqlite3
+import time
 
 # --- Configuration ---
 def load_settings_from_db(db_path='settings.db'):
@@ -34,12 +35,34 @@ def load_alerts_from_db(db_path='settings.db'):
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         topic TEXT NOT NULL,
         threshold REAL NOT NULL,
-        message TEXT NOT NULL
+        message TEXT NOT NULL,
+        max_alerts INTEGER NOT NULL DEFAULT 1,
+        period_seconds INTEGER NOT NULL DEFAULT 3600
     )''')
-    cursor.execute('SELECT topic, threshold, message FROM alerts')
-    alerts = [dict(topic=row[0], threshold=row[1], message=row[2]) for row in cursor.fetchall()]
+    cursor.execute('SELECT id, topic, threshold, message, max_alerts, period_seconds FROM alerts')
+    alerts = [dict(id=row[0], topic=row[1], threshold=row[2], message=row[3], max_alerts=row[4], period_seconds=row[5]) for row in cursor.fetchall()]
     conn.close()
     return alerts
+
+def can_send_alert(alert_id, max_alerts, period_seconds, db_path='settings.db'):
+    import time
+    now = int(time.time())
+    window_start = now - period_seconds
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM alert_logs WHERE alert_id=? AND timestamp>=?', (alert_id, window_start))
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count < max_alerts
+
+def log_alert(alert_id, db_path='settings.db'):
+    import time
+    now = int(time.time())
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO alert_logs (alert_id, timestamp) VALUES (?, ?)', (alert_id, now))
+    conn.commit()
+    conn.close()
 
 # --- Pushover Notification Function ---
 def send_pushover_notification(message):
@@ -68,7 +91,11 @@ def on_message(client, userdata, msg):
         print(f"Received value: {value} on topic: {msg.topic}")
         for alert in ALERTS:
             if msg.topic == alert['topic'] and value > alert['threshold']:
-                send_pushover_notification(alert['message'].replace('{value}', str(value)).replace('{threshold}', str(alert['threshold'])))
+                if can_send_alert(alert['id'], alert['max_alerts'], alert['period_seconds']):
+                    send_pushover_notification(alert['message'].replace('{value}', str(value)).replace('{threshold}', str(alert['threshold'])))
+                    log_alert(alert['id'])
+                else:
+                    print(f"Rate limit reached for alert {alert['id']} (topic: {alert['topic']})")
     except Exception as e:
         print(f"Error processing message: {e}")
 

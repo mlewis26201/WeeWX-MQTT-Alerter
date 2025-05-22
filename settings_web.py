@@ -43,13 +43,15 @@ ALERTS_TEMPLATE = '''
 <h2>Alert Configurations</h2>
 <a href="/">Back to Settings</a>
 <table border=1>
-<tr><th>ID</th><th>Topic</th><th>Threshold</th><th>Message</th><th>Actions</th></tr>
+<tr><th>ID</th><th>Topic</th><th>Threshold</th><th>Message</th><th>Max Alerts</th><th>Period (s)</th><th>Actions</th></tr>
 {% for alert in alerts %}
 <tr>
   <td>{{alert['id']}}</td>
   <td>{{alert['topic']}}</td>
   <td>{{alert['threshold']}}</td>
   <td>{{alert['message']}}</td>
+  <td>{{alert['max_alerts']}}</td>
+  <td>{{alert['period_seconds']}}</td>
   <td>
     <a href="/alerts/edit/{{alert['id']}}">Edit</a>
     <a href="/alerts/delete/{{alert['id']}}" onclick="return confirm('Delete this alert?');">Delete</a>
@@ -62,6 +64,8 @@ ALERTS_TEMPLATE = '''
   Topic: <input type="text" name="topic" required> &nbsp;
   Threshold: <input type="number" step="any" name="threshold" required> &nbsp;
   Message: <input type="text" name="message" required> &nbsp;
+  Max Alerts: <input type="number" name="max_alerts" value="1" min="1" required> &nbsp;
+  Period (seconds): <input type="number" name="period_seconds" value="3600" min="1" required> &nbsp;
   <input type="submit" value="Add Alert">
 </form>
 {% with messages = get_flashed_messages() %}
@@ -84,6 +88,8 @@ EDIT_ALERT_TEMPLATE = '''
   Topic: <input type="text" name="topic" value="{{alert['topic']}}" required><br>
   Threshold: <input type="number" step="any" name="threshold" value="{{alert['threshold']}}" required><br>
   Message: <input type="text" name="message" value="{{alert['message']}}" required><br>
+  Max Alerts: <input type="number" name="max_alerts" value="{{alert['max_alerts']}}" min="1" required><br>
+  Period (seconds): <input type="number" name="period_seconds" value="{{alert['period_seconds']}}" min="1" required><br>
   <input type="submit" value="Save">
 </form>
 '''
@@ -99,7 +105,15 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         topic TEXT NOT NULL,
         threshold REAL NOT NULL,
-        message TEXT NOT NULL
+        message TEXT NOT NULL,
+        max_alerts INTEGER NOT NULL DEFAULT 1,
+        period_seconds INTEGER NOT NULL DEFAULT 3600
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS alert_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        alert_id INTEGER NOT NULL,
+        timestamp INTEGER NOT NULL,
+        FOREIGN KEY(alert_id) REFERENCES alerts(id)
     )''')
     conn.commit()
     conn.close()
@@ -125,32 +139,32 @@ def set_setting(key, value):
 def get_alerts():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT id, topic, threshold, message FROM alerts')
-    alerts = [dict(id=row[0], topic=row[1], threshold=row[2], message=row[3]) for row in cursor.fetchall()]
+    cursor.execute('SELECT id, topic, threshold, message, max_alerts, period_seconds FROM alerts')
+    alerts = [dict(id=row[0], topic=row[1], threshold=row[2], message=row[3], max_alerts=row[4], period_seconds=row[5]) for row in cursor.fetchall()]
     conn.close()
     return alerts
 
 def get_alert(alert_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('SELECT id, topic, threshold, message FROM alerts WHERE id=?', (alert_id,))
+    cursor.execute('SELECT id, topic, threshold, message, max_alerts, period_seconds FROM alerts WHERE id=?', (alert_id,))
     row = cursor.fetchone()
     conn.close()
     if row:
-        return dict(id=row[0], topic=row[1], threshold=row[2], message=row[3])
+        return dict(id=row[0], topic=row[1], threshold=row[2], message=row[3], max_alerts=row[4], period_seconds=row[5])
     return None
 
-def add_alert(topic, threshold, message):
+def add_alert(topic, threshold, message, max_alerts=1, period_seconds=3600):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO alerts (topic, threshold, message) VALUES (?, ?, ?)', (topic, threshold, message))
+    cursor.execute('INSERT INTO alerts (topic, threshold, message, max_alerts, period_seconds) VALUES (?, ?, ?, ?, ?)', (topic, threshold, message, max_alerts, period_seconds))
     conn.commit()
     conn.close()
 
-def update_alert(alert_id, topic, threshold, message):
+def update_alert(alert_id, topic, threshold, message, max_alerts=1, period_seconds=3600):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('UPDATE alerts SET topic=?, threshold=?, message=? WHERE id=?', (topic, threshold, message, alert_id))
+    cursor.execute('UPDATE alerts SET topic=?, threshold=?, message=?, max_alerts=?, period_seconds=? WHERE id=?', (topic, threshold, message, max_alerts, period_seconds, alert_id))
     conn.commit()
     conn.close()
 
@@ -182,7 +196,9 @@ def add_alert_route():
     topic = request.form['topic']
     threshold = request.form['threshold']
     message = request.form['message']
-    add_alert(topic, threshold, message)
+    max_alerts = request.form['max_alerts']
+    period_seconds = request.form['period_seconds']
+    add_alert(topic, threshold, message, max_alerts, period_seconds)
     flash('Alert added!')
     return redirect(url_for('alerts'))
 
@@ -196,7 +212,9 @@ def edit_alert(alert_id):
         topic = request.form['topic']
         threshold = request.form['threshold']
         message = request.form['message']
-        update_alert(alert_id, topic, threshold, message)
+        max_alerts = request.form['max_alerts']
+        period_seconds = request.form['period_seconds']
+        update_alert(alert_id, topic, threshold, message, max_alerts, period_seconds)
         flash('Alert updated!')
         return redirect(url_for('alerts'))
     return render_template_string(EDIT_ALERT_TEMPLATE, alert=alert)

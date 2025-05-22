@@ -123,7 +123,7 @@ def on_message(client, userdata, msg):
                 if can_send_alert(alert['id'], alert['max_alerts'], alert['period_seconds']):
                     send_pushover_notification(alert['message'].replace('{value}', str(value)).replace('{threshold}', str(alert['threshold'])))
                     log_alert(alert['id'])
-                    logging.info(f"Pushover notification sent for alert {alert['id']} on topic '{msg.topic}'")
+                    logging.info(f"Pushover notification sent for alert {alert['id']} on topic '{msg.topic}' with value {value} (threshold {alert['threshold']})")
                 else:
                     logging.info(f"Rate limit reached for alert {alert['id']} (topic: {alert['topic']})")
     except Exception as e:

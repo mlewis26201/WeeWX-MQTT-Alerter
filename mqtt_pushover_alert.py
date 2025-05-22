@@ -41,6 +41,16 @@ def load_alerts_from_db(db_path='settings.db'):
         max_alerts INTEGER NOT NULL DEFAULT 1,
         period_seconds INTEGER NOT NULL DEFAULT 3600
     )''')
+    # Add alert for MQTT_TOPIC in settings if not already present
+    settings = load_settings_from_db(db_path)
+    mqtt_topic = settings.get('MQTT_TOPIC')
+    if mqtt_topic:
+        cursor.execute('SELECT COUNT(*) FROM alerts WHERE topic=?', (mqtt_topic,))
+        if cursor.fetchone()[0] == 0:
+            # Add a default alert for this topic if not present
+            cursor.execute('''INSERT INTO alerts (topic, threshold, message, max_alerts, period_seconds) VALUES (?, ?, ?, ?, ?)''',
+                (mqtt_topic, 0, 'Default alert for {value}', 1, 3600))
+            conn.commit()
     cursor.execute('SELECT id, topic, threshold, message, max_alerts, period_seconds FROM alerts')
     alerts = [dict(id=row[0], topic=row[1], threshold=row[2], message=row[3], max_alerts=row[4], period_seconds=row[5]) for row in cursor.fetchall()]
     conn.close()

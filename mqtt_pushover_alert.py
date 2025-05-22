@@ -100,17 +100,20 @@ def on_message(client, userdata, msg):
     try:
         log_seen_topic(msg.topic)
         payload = msg.payload.decode('utf-8')
+        logging.info(f"MQTT message received on topic '{msg.topic}': {payload}")
         value = float(payload)
         print(f"Received value: {value} on topic: {msg.topic}")
         for alert in ALERTS:
             if msg.topic == alert['topic'] and value > alert['threshold']:
+                logging.info(f"Alert triggered for topic '{msg.topic}' with value {value} (threshold {alert['threshold']})")
                 if can_send_alert(alert['id'], alert['max_alerts'], alert['period_seconds']):
                     send_pushover_notification(alert['message'].replace('{value}', str(value)).replace('{threshold}', str(alert['threshold'])))
                     log_alert(alert['id'])
+                    logging.info(f"Pushover notification sent for alert {alert['id']} on topic '{msg.topic}'")
                 else:
-                    print(f"Rate limit reached for alert {alert['id']} (topic: {alert['topic']})")
+                    logging.info(f"Rate limit reached for alert {alert['id']} (topic: {alert['topic']})")
     except Exception as e:
-        print(f"Error processing message: {e}")
+        logging.error(f"Error processing message on topic '{msg.topic}': {e}")
 
 # --- Main ---
 if __name__ == '__main__':

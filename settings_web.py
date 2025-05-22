@@ -155,6 +155,7 @@ def set_setting(key, value):
         ON CONFLICT(key) DO UPDATE SET value=excluded.value''', (key, value))
     conn.commit()
     conn.close()
+    logging.info(f"Setting updated: {key} = {value}")
 
 def get_alerts():
     conn = sqlite3.connect(DB_PATH)
@@ -201,6 +202,7 @@ def index():
         for key in REQUIRED_KEYS:
             value = request.form.get(key, '')
             set_setting(key, value)
+        logging.info("Settings updated via web form.")
         flash('Settings updated!')
         return redirect(url_for('index'))
     settings = get_settings()

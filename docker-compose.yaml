@@ -6,6 +6,14 @@ services:
     image: weewx-mqtt-alerter:latest
     container_name: mqtt_alerter
     command: python mqtt_pushover_alert.py
+    environment:
+      - MQTT_BROKER=your-mqtt-broker
+      - MQTT_PORT=1883
+      - MQTT_USERNAME=your-mqtt-username
+      - MQTT_PASSWORD=your-mqtt-password
+      - MQTT_TOPIC=weather
+      - PUSHOVER_USER_KEY=your-pushover-user-key
+      - PUSHOVER_API_TOKEN=your-pushover-api-token
     volumes:
       - settings_data:/app
     restart: unless-stopped
@@ -15,6 +23,14 @@ services:
     image: weewx-mqtt-alerter:latest
     container_name: web_frontend
     command: gunicorn -b 0.0.0.0:8000 settings_web:app --timeout 300 --log-level warning
+    environment:
+      - MQTT_BROKER=your-mqtt-broker
+      - MQTT_PORT=1883
+      - MQTT_USERNAME=your-mqtt-username
+      - MQTT_PASSWORD=your-mqtt-password
+      - MQTT_TOPIC=weather
+      - PUSHOVER_USER_KEY=your-pushover-user-key
+      - PUSHOVER_API_TOKEN=your-pushover-api-token
     ports:
       - "8999:8000"
     volumes:

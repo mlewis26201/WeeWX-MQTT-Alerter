@@ -4,19 +4,38 @@ import json
 import sqlite3
 import time
 import logging
+import os
 
 # --- Configuration ---
 def load_settings_from_db(db_path='settings.db'):
+    # If DB does not exist or is empty, pre-populate from environment variables
+    db_exists = os.path.exists(db_path)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
     )''')
+    cursor.execute('SELECT COUNT(*) FROM settings')
+    settings_count = cursor.fetchone()[0]
+    # Pre-populate if missing/empty
+    if not db_exists or settings_count == 0:
+        env_defaults = {
+            'MQTT_BROKER': os.environ.get('MQTT_BROKER', ''),
+            'MQTT_PORT': os.environ.get('MQTT_PORT', '1883'),
+            'MQTT_USERNAME': os.environ.get('MQTT_USERNAME', ''),
+            'MQTT_PASSWORD': os.environ.get('MQTT_PASSWORD', ''),
+            'MQTT_TOPIC': os.environ.get('MQTT_TOPIC', 'weather'),
+            'PUSHOVER_USER_KEY': os.environ.get('PUSHOVER_USER_KEY', ''),
+            'PUSHOVER_API_TOKEN': os.environ.get('PUSHOVER_API_TOKEN', ''),
+        }
+        for k, v in env_defaults.items():
+            cursor.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', (k, v))
+        conn.commit()
     # Required keys
     required_keys = [
         'MQTT_BROKER', 'MQTT_PORT', 'MQTT_USERNAME', 'MQTT_PASSWORD',
-        'PUSHOVER_USER_KEY', 'PUSHOVER_API_TOKEN'
+        'PUSHOVER_USER_KEY', 'PUSHOVER_API_TOKEN', 'MQTT_TOPIC'
     ]
     settings = {}
     for key in required_keys:

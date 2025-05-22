@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  mqtt_alerter:
+    build: .
+    image: weewx-mqtt-alerter:latest
+    container_name: mqtt_alerter
+    command: python mqtt_pushover_alert.py
+    volumes:
+      - settings_data:/app/settings.db
+    restart: unless-stopped
+
+  web_frontend:
+    build: .
+    image: weewx-mqtt-alerter:latest
+    container_name: web_frontend
+    command: gunicorn -b 0.0.0.0:8000 settings_web:app
+    ports:
+      - "8000:8000"
+    volumes:
+      - settings_data:/app/settings.db
+    restart: unless-stopped
+
+volumes:
+  settings_data:
+    # This will create a named volume for persistent storage of settings.db

@@ -322,8 +322,15 @@ def get_alert_history(limit=100):
 def datetimeformat_filter(value):
     return datetime.fromtimestamp(value).strftime('%Y-%m-%d %H:%M:%S')
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
+    if request.method == 'POST':
+        for key in REQUIRED_KEYS:
+            value = request.form.get(key, '')
+            set_setting(key, value)
+        logging.info("Settings updated via web form.")
+        flash('Settings updated!')
+        return redirect(url_for('index'))
     settings = get_settings()
     return render_template_string(SETTINGS_TEMPLATE, settings=settings, required_keys=REQUIRED_KEYS)
 

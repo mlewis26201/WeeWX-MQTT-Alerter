@@ -1,6 +1,6 @@
 # WeeWX MQTT Alerter
 
-A Dockerized system for monitoring MQTT topics and sending Pushover notifications when configurable thresholds are exceeded. Includes a Flask web frontend for managing settings and alerts, with alert history and logging.
+A Dockerized system for monitoring MQTT messages from WeeWX weather software and sending Pushover notifications when configurable thresholds are exceeded. Includes a Flask web frontend for managing settings and alerts, with alert history and logging.
 
 ## Features
 - Subscribes to MQTT topics and triggers alerts when values are above or below thresholds

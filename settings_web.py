@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, redirect, url_for, flash
+from flask import Flask, render_template_string, request, redirect, url_for, flash, send_file
 import sqlite3
 import logging
 from datetime import datetime
@@ -77,7 +77,7 @@ ALERTS_TEMPLATE = f'''
 <div class="container mt-4">
 <div class="card"><div class="card-body">
 <h2 class="mb-4">Alert Configurations</h2>
-<a href="/" class="btn btn-secondary mb-3">Back to Settings</a> | <a href="/alert_history" class="btn btn-outline-secondary mb-3">View Alert History</a>
+<a href="/" class="btn btn-secondary mb-3">Back to Settings</a> | <a href="/alert_history" class="btn btn-outline-secondary mb-3">View Alert History</a> | <a href="/download_db" class="btn btn-outline-info mb-3">Download DB</a>
 <table class="table table-striped table-bordered">
 <tr><th>ID</th><th>Topic</th><th>IS</th><th>Value</th><th>Message</th><th>Max Alerts</th><th>Period (s)</th><th>Actions</th></tr>
 {{% for alert in alerts %}}
@@ -406,6 +406,10 @@ def delete_alert_route(alert_id):
 def alert_history():
     history = get_alert_history()
     return render_template_string(ALERT_HISTORY_TEMPLATE, history=history)
+
+@app.route('/download_db')
+def download_db():
+    return send_file(DB_PATH, as_attachment=True, download_name='settings.db')
 
 if __name__ == '__main__':
     app.run(debug=True)

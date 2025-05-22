@@ -16,7 +16,7 @@ services:
     container_name: web_frontend
     command: gunicorn -b 0.0.0.0:8000 settings_web:app
     ports:
-      - "8000:8000"
+      - "8999:8000"
     volumes:
       - settings_data:/app
     restart: unless-stopped

@@ -125,12 +125,15 @@ def send_pushover_notification(message):
 # --- MQTT Callback ---
 def on_connect(client, userdata, flags, rc):
     logging.info(f"Connected to MQTT broker with result code {rc}")
+    print(f"Connected to MQTT broker with result code {rc}")
+    print(f"Loaded alerts: {ALERTS}")
     # Subscribe to all unique topics in alerts, including subtopics
     for alert in ALERTS:
         topic = alert['topic']
         if not topic.endswith('#'):
             topic = topic.rstrip('/') + '/#'  # Subscribe to all subtopics
         logging.info(f"Subscribing to topic: {topic}")
+        print(f"Subscribing to topic: {topic}")
         client.subscribe(topic)
 
 
@@ -139,9 +142,16 @@ def on_message(client, userdata, msg):
         log_seen_topic(msg.topic)
         payload = msg.payload.decode('utf-8')
         logging.info(f"MQTT message received on topic '{msg.topic}': {payload}")
-        value = float(payload)
+        print(f"MQTT message received on topic '{msg.topic}': {payload}")
+        try:
+            value = float(payload)
+        except Exception as e:
+            logging.error(f"Could not convert payload to float: {payload} ({e})")
+            print(f"Could not convert payload to float: {payload} ({e})")
+            return
         print(f"Received value: {value} on topic: {msg.topic}")
         for alert in ALERTS:
+            print(f"Checking alert: {alert}")
             if msg.topic == alert['topic']:
                 direction = alert.get('direction', 'above')
                 threshold = alert['threshold']
@@ -150,16 +160,21 @@ def on_message(client, userdata, msg):
                     triggered = True
                 elif direction == 'below' and value < threshold:
                     triggered = True
+                print(f"Alert check: direction={direction}, threshold={threshold}, triggered={triggered}")
                 if triggered:
                     logging.info(f"Alert triggered for topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
+                    print(f"Alert triggered for topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     if can_send_alert(alert['id'], alert['max_alerts'], alert['period_seconds']):
                         send_pushover_notification(alert['message'].replace('{value}', str(value)).replace('{threshold}', str(threshold)))
                         log_alert(alert['id'])
                         logging.info(f"Pushover notification sent for alert {alert['id']} on topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
+                        print(f"Pushover notification sent for alert {alert['id']} on topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     else:
                         logging.info(f"Rate limit reached for alert {alert['id']} (topic: {alert['topic']})")
+                        print(f"Rate limit reached for alert {alert['id']} (topic: {alert['topic']})")
     except Exception as e:
         logging.error(f"Error processing message on topic '{msg.topic}': {e}")
+        print(f"Error processing message on topic '{msg.topic}': {e}")
 
 # --- Main ---
 if __name__ == '__main__':

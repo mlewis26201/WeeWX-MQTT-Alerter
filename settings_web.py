@@ -35,6 +35,7 @@ SETTINGS_TEMPLATE = '''
     </ul>
   {% endif %}
 {% endwith %}
+<footer style="margin-top:2em;text-align:center;color:#888;">Built with Coco!</footer>
 '''
 
 ALERTS_TEMPLATE = '''
@@ -77,6 +78,7 @@ ALERTS_TEMPLATE = '''
     </ul>
   {% endif %}
 {% endwith %}
+<footer style="margin-top:2em;text-align:center;color:#888;">Built with Coco!</footer>
 '''
 
 EDIT_ALERT_TEMPLATE = '''
@@ -92,6 +94,7 @@ EDIT_ALERT_TEMPLATE = '''
   Period (seconds): <input type="number" name="period_seconds" value="{{alert['period_seconds']}}" min="1" required><br>
   <input type="submit" value="Save">
 </form>
+<footer style="margin-top:2em;text-align:center;color:#888;">Built with Coco!</footer>
 '''
 
 def init_db():

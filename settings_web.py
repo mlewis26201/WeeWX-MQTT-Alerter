@@ -3,7 +3,7 @@ import sqlite3
 
 DB_PATH = 'settings.db'
 REQUIRED_KEYS = [
-    'MQTT_BROKER', 'MQTT_PORT', 'MQTT_TOPIC', 'THRESHOLD',
+    'MQTT_BROKER', 'MQTT_PORT', 'MQTT_TOPIC',
     'PUSHOVER_USER_KEY', 'PUSHOVER_API_TOKEN'
 ]
 
@@ -12,8 +12,8 @@ app.secret_key = 'your_secret_key'  # Change this for production
 
 SETTINGS_TEMPLATE = '''
 <!doctype html>
-<title>MQTT Pushover Settings</title>
-<h2>MQTT Pushover Settings</h2>
+<title>WeeWX MQTT Alerter Settings</title>
+<h2>WeeWX MQTT Alerter Settings</h2>
 <form method="post">
   <table>
     {% for key in required_keys %}

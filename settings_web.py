@@ -148,9 +148,9 @@ ALERTS_TEMPLATE = f'''
 </div></body></html>
 '''
 
-EDIT_ALERT_TEMPLATE = f'''
+EDIT_ALERT_TEMPLATE = '''
 <!doctype html>
-<html><head><title>Edit Alert</title>{BOOTSTRAP_HEAD}</head><body>
+<html><head><title>Edit Alert</title>''' + BOOTSTRAP_HEAD + '''</head><body>
 <div class="container mt-4">
 <div class="card"><div class="card-body">
 <h2>Edit Alert</h2>
@@ -159,29 +159,29 @@ EDIT_ALERT_TEMPLATE = f'''
   <div class="col-auto">
     <label>Topic:</label>
     <select name="topic" class="form-select">
-      {{% for t in topics %}}
-        <option value="{{{{t}}}}" {{% if alert['topic'] == t %}}selected{{% endif %}}>{{{{t}}}}</option>
-      {{% endfor %}}
+      {% for t in topics %}
+        <option value="{{t}}" {% if alert['topic'] == t %}selected{% endif %}>{{t}}</option>
+      {% endfor %}
     </select>
   </div>
   <div class="col-auto">
-    <input type="text" class="form-control" name="topic" value="{{{{alert['topic']}}}}" placeholder="Or enter new topic">
+    <input type="text" class="form-control" name="topic" value="{{alert['topic']}}" placeholder="Or enter new topic">
   </div>
   <div class="col-auto">
     <label>Threshold:</label>
-    <input type="number" step="any" class="form-control" name="threshold" value="{{{{alert['threshold']}}}}" required>
+    <input type="number" step="any" class="form-control" name="threshold" value="{{alert['threshold']}}" required>
   </div>
   <div class="col-auto">
     <label>Message:</label>
-    <input type="text" class="form-control" name="message" value="{{{{alert['message']}}}}" required>
+    <input type="text" class="form-control" name="message" value="{{alert['message']}}" required>
   </div>
   <div class="col-auto">
     <label>Max Alerts:</label>
-    <input type="number" class="form-control" name="max_alerts" value="{{{{alert['max_alerts']}}}}" min="1" required>
+    <input type="number" class="form-control" name="max_alerts" value="{{alert['max_alerts']}}" min="1" required>
   </div>
   <div class="col-auto">
     <label>Period (seconds):</label>
-    <input type="number" class="form-control" name="period_seconds" value="{{{{alert['period_seconds']}}}}" min="1" required>
+    <input type="number" class="form-control" name="period_seconds" value="{{alert['period_seconds']}}" min="1" required>
   </div>
   <div class="col-auto">
     <label>Direction:</label>

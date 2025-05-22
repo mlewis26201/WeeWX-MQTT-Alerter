@@ -15,7 +15,7 @@ services:
       - PUSHOVER_USER_KEY=your-pushover-user-key
       - PUSHOVER_API_TOKEN=your-pushover-api-token
     volumes:
-      - settings_data:/app
+      - ./settings.db:/app/settings.db
     restart: unless-stopped
 
   web_frontend:
@@ -34,8 +34,5 @@ services:
     ports:
       - "8999:8000"
     volumes:
-      - settings_data:/app
+      - ./settings.db:/app/settings.db
     restart: unless-stopped
-
-volumes:
-  settings_data:

@@ -1,5 +1,6 @@
 from flask import Flask, render_template_string, request, redirect, url_for, flash
 import sqlite3
+import logging
 
 DB_PATH = 'settings.db'
 REQUIRED_KEYS = [
@@ -9,6 +10,14 @@ REQUIRED_KEYS = [
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Change this for production
+logging.basicConfig(level=logging.DEBUG)
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    print('Exception:', e)
+    traceback.print_exc()
+    return f"Internal Server Error: {e}", 500
 
 SETTINGS_TEMPLATE = '''
 <!doctype html>

@@ -112,6 +112,11 @@ def log_seen_topic(topic, db_path='settings.db'):
 
 # --- Pushover Notification Function ---
 def send_pushover_notification(message, topic=None, value=None):
+    import os
+    PUSHOVER_API_TOKEN = os.environ.get('PUSHOVER_API_TOKEN')
+    PUSHOVER_USER_KEY = os.environ.get('PUSHOVER_USER_KEY')
+    if not PUSHOVER_API_TOKEN or not PUSHOVER_USER_KEY:
+        raise Exception('Pushover credentials not set')
     # Always include topic and value in the notification
     if topic is not None and value is not None:
         message = f"[{topic}] {message} (Value: {value})"

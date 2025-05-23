@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, redirect, url_for, flash, send_file
+from flask import Flask, render_template_string, request, redirect, url_for, flash, send_file, jsonify
 import sqlite3
 import logging
 from datetime import datetime
@@ -73,7 +73,23 @@ SETTINGS_TEMPLATE = f'''
 
 ALERTS_TEMPLATE = f'''
 <!doctype html>
-<html><head><title>Alert Configurations</title>{BOOTSTRAP_HEAD}</head><body>
+<html><head><title>Alert Configurations</title>{BOOTSTRAP_HEAD}
+<script>
+function testAlert(alertId, btn) {{
+  btn.disabled = true;
+  fetch('/test_alert/' + alertId, {{method: 'POST'}})
+    .then(r => r.json())
+    .then(data => {{
+      alert(data.message);
+      btn.disabled = false;
+    }})
+    .catch(() => {{
+      alert('Failed to send test alert');
+      btn.disabled = false;
+    }});
+}}
+</script>
+</head><body>
 <div class="container mt-4">
 <div class="card"><div class="card-body">
 <h2 class="mb-4">Alert Configurations</h2>
@@ -98,6 +114,7 @@ ALERTS_TEMPLATE = f'''
       <input type="text" name="friendly_name" value="{{{{alert['friendly_name']}}}}" placeholder="Friendly name" style="width:100px;">
       <button type="submit" class="btn btn-sm btn-outline-secondary">Set</button>
     </form>
+    <button type="button" class="btn btn-sm btn-warning mt-1" onclick="testAlert({{{{alert['id']}}}}, this)">Test</button>
   </td>
 </tr>
 {{% endfor %}}
@@ -448,6 +465,22 @@ def set_friendly_name_route():
     set_friendly_name(topic, friendly_name)
     flash(f'Friendly name for "{topic}" set to "{friendly_name}"')
     return redirect(url_for('alerts'))
+
+@app.route('/test_alert/<int:alert_id>', methods=['POST'])
+def test_alert(alert_id):
+    alert = get_alert(alert_id)
+    if not alert:
+        return jsonify({'success': False, 'message': 'Alert not found'}), 404
+    # Use friendly name for test
+    from mqtt_pushover_alert import send_pushover_notification
+    friendly_name = get_friendly_name(alert['topic']) if 'friendly_name' in alert else alert['topic']
+    test_value = alert['threshold']
+    direction = alert.get('direction', 'above')
+    # Compose a test message
+    message = alert['message'].replace('{value}', str(test_value)).replace('{threshold}', str(alert['threshold']))
+    message = f"[TEST] [{friendly_name}] {message} (Value: {test_value})"
+    send_pushover_notification(message, topic=alert['topic'], value=test_value)
+    return jsonify({'success': True, 'message': 'Test alert sent!'})
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -162,11 +162,12 @@ def on_message(client, userdata, msg):
                 if triggered:
                     logging.info(f"Alert triggered for topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     if can_send_alert(alert['id'], alert['max_alerts'], alert['period_seconds']):
-                        # Always use friendly name as prefix if set and not blank, otherwise topic
                         friendly_name = get_friendly_name(msg.topic)
-                        use_friendly = friendly_name and friendly_name.strip() and friendly_name != msg.topic
-                        prefix = f"[{friendly_name}] " if use_friendly else f"[{msg.topic}] "
-                        # Always include value in the message, even if not in the template
+                        # Always use friendly name as prefix if it is not identical to the topic and not blank
+                        if friendly_name and friendly_name != msg.topic:
+                            prefix = f"[{friendly_name}] "
+                        else:
+                            prefix = f"[{msg.topic}] "
                         message = alert['message'].replace('{value}', str(value)).replace('{threshold}', str(threshold))
                         if '{value}' not in alert['message'] and f'(Value:' not in message:
                             message = f"{message} (Value: {value})"
@@ -181,14 +182,17 @@ def on_message(client, userdata, msg):
 
 # --- Helper to get friendly name ---
 def get_friendly_name(topic):
-    import sqlite3
     conn = sqlite3.connect('settings.db')
     cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS topic_friendly_names (
+        topic TEXT PRIMARY KEY,
+        friendly_name TEXT
+    )''')
     cursor.execute('SELECT friendly_name FROM topic_friendly_names WHERE topic=?', (topic,))
     row = cursor.fetchone()
     conn.close()
-    if row and row[0]:
-        return row[0]
+    if row and row[0] and row[0].strip():
+        return row[0].strip()
     return topic
 
 # --- Main ---

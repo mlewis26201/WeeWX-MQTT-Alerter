@@ -471,20 +471,18 @@ def test_alert(alert_id):
     alert = get_alert(alert_id)
     if not alert:
         return jsonify({'success': False, 'message': 'Alert not found'}), 404
-    # Dynamically import and set up environment for notification
     import os
     from mqtt_pushover_alert import send_pushover_notification, get_friendly_name
-    # Set env vars for Pushover from settings
     settings = get_settings()
     os.environ['PUSHOVER_USER_KEY'] = settings.get('PUSHOVER_USER_KEY', '')
     os.environ['PUSHOVER_API_TOKEN'] = settings.get('PUSHOVER_API_TOKEN', '')
-    # Compose test message
     friendly_name = get_friendly_name(alert['topic']) if 'friendly_name' in alert else alert['topic']
     test_value = alert['threshold']
     message = alert['message'].replace('{value}', str(test_value)).replace('{threshold}', str(alert['threshold']))
-    message = f"[TEST] [{friendly_name}] {message} (Value: {test_value})"
+    prefix = f"[{friendly_name}] " if friendly_name and friendly_name != alert['topic'] else f"[{alert['topic']}] "
+    message = f"[TEST] {prefix}{message}"
     try:
-        send_pushover_notification(message, topic=alert['topic'], value=test_value)
+        send_pushover_notification(message)
         return jsonify({'success': True, 'message': 'Test alert sent!'})
     except Exception as e:
         return jsonify({'success': False, 'message': f'Failed to send test alert: {e}'})

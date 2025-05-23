@@ -117,8 +117,8 @@ def send_pushover_notification(message, topic=None, value=None, friendly_name=No
     PUSHOVER_USER_KEY = os.environ.get('PUSHOVER_USER_KEY')
     if not PUSHOVER_API_TOKEN or not PUSHOVER_USER_KEY:
         raise Exception('Pushover credentials not set')
-    # Always include friendly name (if available), topic, and value in the notification
-    prefix = f"[{friendly_name}] " if friendly_name else (f"[{topic}] " if topic else "")
+    # Always include friendly name (if available), otherwise topic, as prefix
+    prefix = f"[{friendly_name}] " if friendly_name and friendly_name != topic else (f"[{topic}] " if topic else "")
     message = f"{prefix}{message}"
     url = 'https://api.pushover.net/1/messages.json'
     data = {
@@ -165,6 +165,7 @@ def on_message(client, userdata, msg):
                 if triggered:
                     logging.info(f"Alert triggered for topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     if can_send_alert(alert['id'], alert['max_alerts'], alert['period_seconds']):
+                        # Always use friendly name in notification if available
                         friendly_name = get_friendly_name(msg.topic)
                         message = alert['message'].replace('{value}', str(value)).replace('{threshold}', str(threshold))
                         send_pushover_notification(message, topic=msg.topic, value=value, friendly_name=friendly_name)

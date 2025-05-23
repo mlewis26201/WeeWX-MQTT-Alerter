@@ -163,9 +163,12 @@ def on_message(client, userdata, msg):
                     logging.info(f"Alert triggered for topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     if can_send_alert(alert['id'], alert['max_alerts'], alert['period_seconds']):
                         friendly_name = get_friendly_name(msg.topic)
-                        # Only use friendly_name as prefix if it is set and not identical to the topic
+                        # Always use friendly name as prefix if set, otherwise topic
                         prefix = f"[{friendly_name}] " if friendly_name and friendly_name != msg.topic else f"[{msg.topic}] "
+                        # Always include value in the message, even if not in the template
                         message = alert['message'].replace('{value}', str(value)).replace('{threshold}', str(threshold))
+                        if '{value}' not in alert['message']:
+                            message = f"{message} (Value: {value})"
                         message = f"{prefix}{message}"
                         send_pushover_notification(message)
                         log_alert(alert['id'])

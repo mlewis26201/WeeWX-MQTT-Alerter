@@ -79,11 +79,12 @@ ALERTS_TEMPLATE = f'''
 <h2 class="mb-4">Alert Configurations</h2>
 <a href="/" class="btn btn-secondary mb-3">Back to Settings</a> | <a href="/alert_history" class="btn btn-outline-secondary mb-3">View Alert History</a> | <a href="/download_db" class="btn btn-outline-info mb-3">Download DB</a>
 <table class="table table-striped table-bordered">
-<tr><th>ID</th><th>Topic</th><th>IS</th><th>Value</th><th>Message</th><th>Max Alerts</th><th>Period (s)</th><th>Actions</th></tr>
+<tr><th>ID</th><th>Topic</th><th>Friendly Name</th><th>IS</th><th>Value</th><th>Message</th><th>Max Alerts</th><th>Period (s)</th><th>Actions</th></tr>
 {{% for alert in alerts %}}
 <tr>
   <td>{{{{alert['id']}}}}</td>
   <td>{{{{alert['topic']}}}}</td>
+  <td>{{{{alert['friendly_name']}}}}</td>
   <td>{{{{alert['direction']}}}}</td>
   <td>{{{{alert['threshold']}}}}</td>
   <td>{{{{alert['message']}}}}</td>
@@ -92,6 +93,11 @@ ALERTS_TEMPLATE = f'''
   <td>
     <a href="/alerts/edit/{{{{alert['id']}}}}" class="btn btn-sm btn-primary">Edit</a>
     <a href="/alerts/delete/{{{{alert['id']}}}}" class="btn btn-sm btn-danger" onclick="return confirm('Delete this alert?');">Delete</a>
+    <form method="post" action="/set_friendly_name" style="display:inline-block; margin-top:5px;">
+      <input type="hidden" name="topic" value="{{{{alert['topic']}}}}">
+      <input type="text" name="friendly_name" value="{{{{alert['friendly_name']}}}}" placeholder="Friendly name" style="width:100px;">
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Set</button>
+    </form>
   </td>
 </tr>
 {{% endfor %}}
@@ -203,12 +209,13 @@ ALERT_HISTORY_TEMPLATE = f'''
 <h2>Alert History</h2>
 <a href="/" class="btn btn-secondary mb-3">Back to Settings</a> | <a href="/alerts" class="btn btn-outline-secondary mb-3">Manage Alerts</a>
 <table class="table table-striped table-bordered">
-<tr><th>ID</th><th>Time</th><th>Topic</th><th>Threshold</th><th>Message</th><th>Direction</th></tr>
+<tr><th>ID</th><th>Time</th><th>Topic</th><th>Friendly Name</th><th>Threshold</th><th>Message</th><th>Direction</th></tr>
 {{% for log in history %}}
 <tr>
   <td>{{{{log['id']}}}}</td>
   <td>{{{{log['timestamp'] | datetimeformat}}}}</td>
   <td>{{{{log['topic']}}}}</td>
+  <td>{{{{log['friendly_name']}}}}</td>
   <td>{{{{log['threshold']}}}}</td>
   <td>{{{{log['message']}}}}</td>
   <td>{{{{log['direction']}}}}</td>
@@ -250,6 +257,11 @@ def init_db():
     cursor.execute('''CREATE TABLE IF NOT EXISTS mqtt_topics (
         topic TEXT PRIMARY KEY
     )''')
+    # Add table for friendly topic names
+    cursor.execute('''CREATE TABLE IF NOT EXISTS topic_friendly_names (
+        topic TEXT PRIMARY KEY,
+        friendly_name TEXT
+    )''')
     conn.commit()
     conn.close()
 
@@ -272,11 +284,29 @@ def set_setting(key, value):
     conn.close()
     logging.info(f"Setting updated: {key} = {value}")
 
+def get_friendly_name(topic):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT friendly_name FROM topic_friendly_names WHERE topic=?', (topic,))
+    row = cursor.fetchone()
+    conn.close()
+    if row and row[0]:
+        return row[0]
+    return topic
+
+def set_friendly_name(topic, friendly_name):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''INSERT INTO topic_friendly_names (topic, friendly_name) VALUES (?, ?)
+        ON CONFLICT(topic) DO UPDATE SET friendly_name=excluded.friendly_name''', (topic, friendly_name))
+    conn.commit()
+    conn.close()
+
 def get_alerts():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT id, topic, threshold, message, max_alerts, period_seconds, direction FROM alerts')
-    alerts = [dict(id=row[0], topic=row[1], threshold=row[2], message=row[3], max_alerts=row[4], period_seconds=row[5], direction=row[6]) for row in cursor.fetchall()]
+    alerts = [dict(id=row[0], topic=row[1], threshold=row[2], message=row[3], max_alerts=row[4], period_seconds=row[5], direction=row[6], friendly_name=get_friendly_name(row[1])) for row in cursor.fetchall()]
     conn.close()
     return alerts
 
@@ -339,7 +369,7 @@ def get_alert_history(limit=100):
     rows = cursor.fetchall()
     conn.close()
     return [
-        dict(id=row[0], timestamp=row[1], topic=row[2], threshold=row[3], message=row[4], direction=row[5])
+        dict(id=row[0], timestamp=row[1], topic=row[2], threshold=row[3], message=row[4], direction=row[5], friendly_name=get_friendly_name(row[2]))
         for row in rows
     ]
 
@@ -410,6 +440,14 @@ def alert_history():
 @app.route('/download_db')
 def download_db():
     return send_file(DB_PATH, as_attachment=True, download_name='settings.db')
+
+@app.route('/set_friendly_name', methods=['POST'])
+def set_friendly_name_route():
+    topic = request.form['topic']
+    friendly_name = request.form['friendly_name']
+    set_friendly_name(topic, friendly_name)
+    flash(f'Friendly name for "{topic}" set to "{friendly_name}"')
+    return redirect(url_for('alerts'))
 
 if __name__ == '__main__':
     app.run(debug=True)

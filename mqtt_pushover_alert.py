@@ -159,8 +159,10 @@ def on_message(client, userdata, msg):
                 if triggered:
                     logging.info(f"Alert triggered for topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     if can_send_alert(alert['id'], alert['max_alerts'], alert['period_seconds']):
-                        # Always include topic and value in the notification
+                        # Always include topic, friendly name, and value in the notification
+                        friendly_name = get_friendly_name(msg.topic)
                         message = alert['message'].replace('{value}', str(value)).replace('{threshold}', str(threshold))
+                        message = f"[{friendly_name}] {message} (Value: {value})"
                         send_pushover_notification(message, topic=msg.topic, value=value)
                         log_alert(alert['id'])
                         logging.info(f"Pushover notification sent for alert {alert['id']} on topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
@@ -168,6 +170,18 @@ def on_message(client, userdata, msg):
                         logging.info(f"Rate limit reached for alert {alert['id']} (topic: {alert['topic']})")
     except Exception as e:
         logging.error(f"Error processing message on topic '{msg.topic}': {e}")
+
+# --- Helper to get friendly name ---
+def get_friendly_name(topic):
+    import sqlite3
+    conn = sqlite3.connect('settings.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT friendly_name FROM topic_friendly_names WHERE topic=?', (topic,))
+    row = cursor.fetchone()
+    conn.close()
+    if row and row[0]:
+        return row[0]
+    return topic
 
 # --- Main ---
 if __name__ == '__main__':

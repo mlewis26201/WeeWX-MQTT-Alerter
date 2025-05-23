@@ -111,15 +111,12 @@ def log_seen_topic(topic, db_path='settings.db'):
     conn.close()
 
 # --- Pushover Notification Function ---
-def send_pushover_notification(message, topic=None, value=None, friendly_name=None):
+def send_pushover_notification(message):
     import os
     PUSHOVER_API_TOKEN = os.environ.get('PUSHOVER_API_TOKEN')
     PUSHOVER_USER_KEY = os.environ.get('PUSHOVER_USER_KEY')
     if not PUSHOVER_API_TOKEN or not PUSHOVER_USER_KEY:
         raise Exception('Pushover credentials not set')
-    # Always include friendly name (if available), otherwise topic, as prefix
-    prefix = f"[{friendly_name}] " if friendly_name and friendly_name != topic else (f"[{topic}] " if topic else "")
-    message = f"{prefix}{message}"
     url = 'https://api.pushover.net/1/messages.json'
     data = {
         'token': PUSHOVER_API_TOKEN,
@@ -165,10 +162,12 @@ def on_message(client, userdata, msg):
                 if triggered:
                     logging.info(f"Alert triggered for topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     if can_send_alert(alert['id'], alert['max_alerts'], alert['period_seconds']):
-                        # Always use friendly name in notification if available
                         friendly_name = get_friendly_name(msg.topic)
+                        # Only use friendly_name as prefix if it is set and not identical to the topic
+                        prefix = f"[{friendly_name}] " if friendly_name and friendly_name != msg.topic else f"[{msg.topic}] "
                         message = alert['message'].replace('{value}', str(value)).replace('{threshold}', str(threshold))
-                        send_pushover_notification(message, topic=msg.topic, value=value, friendly_name=friendly_name)
+                        message = f"{prefix}{message}"
+                        send_pushover_notification(message)
                         log_alert(alert['id'])
                         logging.info(f"Pushover notification sent for alert {alert['id']} on topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     else:

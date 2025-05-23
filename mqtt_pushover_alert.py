@@ -111,21 +111,22 @@ def log_seen_topic(topic, db_path='settings.db'):
     conn.close()
 
 # --- Pushover Notification Function ---
-def send_pushover_notification(message, topic=None, value=None):
+def send_pushover_notification(message, topic=None, value=None, friendly_name=None):
     import os
     PUSHOVER_API_TOKEN = os.environ.get('PUSHOVER_API_TOKEN')
     PUSHOVER_USER_KEY = os.environ.get('PUSHOVER_USER_KEY')
     if not PUSHOVER_API_TOKEN or not PUSHOVER_USER_KEY:
         raise Exception('Pushover credentials not set')
-    # Always include topic and value in the notification
-    if topic is not None and value is not None:
-        message = f"[{topic}] {message} (Value: {value})"
+    # Always include friendly name (if available), topic, and value in the notification
+    prefix = f"[{friendly_name}] " if friendly_name else (f"[{topic}] " if topic else "")
+    message = f"{prefix}{message}"
     url = 'https://api.pushover.net/1/messages.json'
     data = {
         'token': PUSHOVER_API_TOKEN,
         'user': PUSHOVER_USER_KEY,
         'message': message
     }
+    import requests
     response = requests.post(url, data=data)
     if response.status_code != 200:
         print(f"Failed to send notification: {response.text}")
@@ -164,11 +165,9 @@ def on_message(client, userdata, msg):
                 if triggered:
                     logging.info(f"Alert triggered for topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     if can_send_alert(alert['id'], alert['max_alerts'], alert['period_seconds']):
-                        # Always include topic, friendly name, and value in the notification
                         friendly_name = get_friendly_name(msg.topic)
                         message = alert['message'].replace('{value}', str(value)).replace('{threshold}', str(threshold))
-                        message = f"[{friendly_name}] {message} (Value: {value})"
-                        send_pushover_notification(message, topic=msg.topic, value=value)
+                        send_pushover_notification(message, topic=msg.topic, value=value, friendly_name=friendly_name)
                         log_alert(alert['id'])
                         logging.info(f"Pushover notification sent for alert {alert['id']} on topic '{msg.topic}' with value {value} (threshold {threshold}, direction {direction})")
                     else:

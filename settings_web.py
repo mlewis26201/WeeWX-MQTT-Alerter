@@ -261,10 +261,10 @@ def init_db():
         direction TEXT NOT NULL DEFAULT 'above'
     )''')
     # Add direction column if missing (for upgrades)
-    try:
+    cursor.execute("PRAGMA table_info(alerts)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if 'direction' not in columns:
         cursor.execute("ALTER TABLE alerts ADD COLUMN direction TEXT NOT NULL DEFAULT 'above'")
-    except sqlite3.OperationalError:
-        pass  # Already exists
     cursor.execute('''CREATE TABLE IF NOT EXISTS alert_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         alert_id INTEGER NOT NULL,
@@ -295,8 +295,11 @@ def get_settings():
 def set_setting(key, value):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('''INSERT INTO settings (key, value) VALUES (?, ?)
-        ON CONFLICT(key) DO UPDATE SET value=excluded.value''', (key, value))
+    cursor.execute('SELECT value FROM settings WHERE key=?', (key,))
+    existing_value = cursor.fetchone()
+    if existing_value is None or existing_value[0] != value:
+        cursor.execute('''INSERT INTO settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value=excluded.value''', (key, value))
     conn.commit()
     conn.close()
     logging.info(f"Setting updated: {key} = {value}")
@@ -316,13 +319,27 @@ def set_friendly_name(topic, friendly_name):
     cursor = conn.cursor()
     cursor.execute('''INSERT INTO topic_friendly_names (topic, friendly_name) VALUES (?, ?)
         ON CONFLICT(topic) DO UPDATE SET friendly_name=excluded.friendly_name''', (topic, friendly_name))
-    conn.commit()
-    conn.close()
-
 def get_alerts():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    cursor.execute('SELECT topic, friendly_name FROM topic_friendly_names')
+    friendly_names = {row[0]: row[1] for row in cursor.fetchall()}
     cursor.execute('SELECT id, topic, threshold, message, max_alerts, period_seconds, direction FROM alerts')
+    alerts = [
+        dict(
+            id=row[0],
+            topic=row[1],
+            threshold=row[2],
+            message=row[3],
+            max_alerts=row[4],
+            period_seconds=row[5],
+            direction=row[6],
+            friendly_name=friendly_names.get(row[1], row[1])
+        )
+        for row in cursor.fetchall()
+    ]
+    conn.close()
+    return alerts
     alerts = [dict(id=row[0], topic=row[1], threshold=row[2], message=row[3], max_alerts=row[4], period_seconds=row[5], direction=row[6], friendly_name=get_friendly_name(row[1])) for row in cursor.fetchall()]
     conn.close()
     return alerts
@@ -392,7 +409,11 @@ def get_alert_history(limit=100):
 
 @app.template_filter('datetimeformat')
 def datetimeformat_filter(value):
-    return datetime.fromtimestamp(value).strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        return datetime.fromtimestamp(value).strftime('%Y-%m-%d %H:%M:%S')
+    except (ValueError, TypeError) as e:
+        logging.error(f"Invalid timestamp: {value} - {e}")
+        return "Invalid timestamp"
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -408,17 +429,28 @@ def index():
 
 @app.route('/alerts')
 def alerts():
-    alerts = get_alerts()
-    topics = get_seen_topics()
-    return render_template_string(ALERTS_TEMPLATE, alerts=alerts, topics=topics)
-
 @app.route('/alerts/add', methods=['POST'])
 def add_alert_route():
     topic = request.form['topic']
-    threshold = request.form['threshold']
+    try:
+        threshold = float(request.form['threshold'])
+        max_alerts = int(request.form['max_alerts'])
+        period_seconds = int(request.form['period_seconds'])
+        if threshold < 0:
+            raise ValueError("Threshold must be non-negative.")
+        if max_alerts < 1:
+            raise ValueError("Max alerts must be at least 1.")
+        if period_seconds < 1:
+            raise ValueError("Period seconds must be at least 1.")
+    except ValueError as e:
+        flash(f"Invalid input: {e}")
+        return redirect(url_for('alerts'))
+    
     message = request.form['message']
-    max_alerts = request.form['max_alerts']
-    period_seconds = request.form['period_seconds']
+    direction = request.form.get('direction', 'above')
+    add_alert(topic, threshold, message, max_alerts, period_seconds, direction)
+    flash('Alert added!')
+    return redirect(url_for('alerts'))
     direction = request.form.get('direction', 'above')
     add_alert(topic, threshold, message, max_alerts, period_seconds, direction)
     flash('Alert added!')
@@ -464,9 +496,8 @@ def set_friendly_name_route():
     friendly_name = request.form['friendly_name']
     set_friendly_name(topic, friendly_name)
     flash(f'Friendly name for "{topic}" set to "{friendly_name}"')
-    return redirect(url_for('alerts'))
-
-@app.route('/test_alert/<int:alert_id>', methods=['POST'])
+    prefix = f"[{friendly_name}] " if friendly_name and friendly_name != alert['topic'] else f"[{alert['topic']}] "
+    message = f"[TEST] {prefix}{alert['message'].format(value=test_value, threshold=alert['threshold'])}"
 def test_alert(alert_id):
     alert = get_alert(alert_id)
     if not alert:
